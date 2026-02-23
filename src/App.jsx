@@ -660,12 +660,751 @@ function ExerciseTab() {
   );
 }
 
+// ===== TAB: DEEP DIVE =====
+function DeepDiveTab() {
+  const [active, setActive] = useState(0);
+  const p = team[active];
+  const pipeline = getPipelineData();
+
+  // Build unified assessment summary
+  function getAssessmentSummary(person) {
+    const sections = [];
+    if (person.wg) {
+      sections.push({ label: "Working Genius", items: [
+        { k: "Genius", v: person.wg.genius.join(" + "), color: "text-emerald-400" },
+        { k: "Competency", v: person.wg.competency.join(" + "), color: "text-amber-400" },
+        { k: "Frustration", v: person.wg.frustration.join(" + "), color: "text-rose-400" }
+      ]});
+    }
+    if (person.voices) sections.push({ label: "Five Voices", items: [{ k: "Voices", v: person.voices.join(", "), color: "text-indigo-400" }] });
+    if (person.mbti) sections.push({ label: "MBTI", items: [{ k: "Type", v: person.mbti, color: "text-purple-400" }] });
+    if (person.enneagram) sections.push({ label: "Enneagram", items: [{ k: "Type", v: person.enneagram, color: "text-pink-400" }] });
+    if (person.sf) sections.push({ label: "StrengthsFinder", items: person.sf.map(s => ({ k: "", v: s, color: "text-sky-400" })) });
+    if (person.mcode) sections.push({ label: "MCODE", items: person.mcode.map(m => ({ k: "", v: m, color: "text-teal-400" })) });
+    if (person.pi) sections.push({ label: "Predictive Index", items: [{ k: "Profile", v: person.pi, color: "text-cyan-400" }] });
+    if (person.bigFive) sections.push({ label: "Big Five", items: Object.entries(person.bigFive).map(([k, v]) => ({ k, v: `${v}th percentile`, color: v > 50 ? "text-indigo-400" : "text-slate-400" })) });
+    return sections;
+  }
+
+  // Get all pairs involving this person
+  function getPersonPairs(person) {
+    return team.filter(t => t.initials !== person.initials).map(other => {
+      const key = getPairKey(person, other);
+      const pair = pairs[key];
+      return pair ? { other, pair, key } : null;
+    }).filter(Boolean).sort((a, b) => b.pair.score - a.pair.score);
+  }
+
+  // Synthesize a unified personality narrative
+  function getPersonalitySynthesis(person) {
+    const traits = [];
+    if (person.wg) {
+      const geniusCodes = person.wg.genius;
+      if (geniusCodes.includes("W")) traits.push("a deep thinker who naturally ponders what's missing or broken");
+      if (geniusCodes.includes("I")) traits.push("a natural creator who generates original solutions");
+      if (geniusCodes.includes("D")) traits.push("an evaluator with strong instincts for what will work");
+      if (geniusCodes.includes("G")) traits.push("a rallier who energizes people around a direction");
+      if (geniusCodes.includes("E")) traits.push("a supporter who helps others succeed");
+      if (geniusCodes.includes("T")) traits.push("a finisher who pushes things across the line");
+    }
+    if (person.mbti) {
+      if (person.mbti.startsWith("E")) traits.push("energized by interaction and thinking out loud");
+      else traits.push("energized by reflection and thinking before speaking");
+      if (person.mbti.includes("NF")) traits.push("values people and possibilities");
+      if (person.mbti.includes("NT")) traits.push("values logic and strategy");
+    }
+    if (person.bigFive) {
+      if (person.bigFive.A < 20) traits.push("very direct and unfiltered — pushback is engagement, not opposition");
+      if (person.bigFive.C < 20) traits.push("highly spontaneous — prefers autonomy over structure");
+      if (person.bigFive.E > 80) traits.push("extremely extraverted and high-energy");
+    }
+    if (person.enneagram) {
+      if (person.enneagram.startsWith("3")) traits.push("achievement-driven and image-conscious");
+      if (person.enneagram.startsWith("7")) traits.push("drawn to variety, novelty, and excitement");
+    }
+    return traits;
+  }
+
+  const assessments = getAssessmentSummary(p);
+  const personPairs = getPersonPairs(p);
+  const synthesis = getPersonalitySynthesis(p);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-slate-400 text-sm">Everything we know about each person, synthesized across all assessments into one unified profile.</p>
+      {/* Person selector */}
+      <div className="flex flex-wrap gap-2">
+        {team.map((person, i) => (
+          <button key={person.initials} onClick={() => setActive(i)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${active === i ? "bg-slate-700 border-slate-500 text-white" : "bg-slate-800/30 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"}`}>
+            <Avatar person={person} size="sm" selected={active === i} />
+            <span className="text-sm font-medium">{person.name.split(" ")[0]}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Unified Profile */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <div className="flex items-center gap-4 mb-5">
+          <Avatar person={p} size="lg" />
+          <div>
+            <div className="text-white text-xl font-bold">{p.name}</div>
+            <div className="text-slate-400">{p.role}</div>
+          </div>
+        </div>
+
+        {/* Personality Synthesis */}
+        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-lg p-4 mb-5">
+          <div className="text-indigo-300 text-xs font-medium uppercase tracking-wider mb-2">Unified Personality Synthesis</div>
+          <div className="text-slate-200 text-sm leading-relaxed">
+            {p.name.split(" ")[0]} is {synthesis.slice(0, 3).join(", ")}
+            {synthesis.length > 3 && `. Additionally: ${synthesis.slice(3).join(", ")}`}.
+          </div>
+        </div>
+
+        {/* Core Drive */}
+        <div className="mb-5">
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">Core Drive</div>
+          <div className="text-white text-sm font-medium">{p.drive}</div>
+        </div>
+
+        {/* All Assessments Grid */}
+        <div className="mb-5">
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">All Assessment Data</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {assessments.map((section, i) => (
+              <div key={i} className="bg-slate-700/30 border border-slate-700 rounded-lg p-3">
+                <div className="text-slate-500 text-[10px] font-medium uppercase tracking-wider mb-2">{section.label}</div>
+                {section.items.map((item, j) => (
+                  <div key={j} className={`text-sm ${item.color}`}>
+                    {item.k ? <span className="text-slate-500 text-xs mr-1">{item.k}:</span> : null}
+                    {item.v}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {assessments.length === 0 && <div className="text-slate-500 text-sm italic col-span-4">Limited assessment data available</div>}
+          </div>
+        </div>
+
+        {/* Communication Cheat Sheet */}
+        <div className="mb-5">
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">Communication Cheat Sheet</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+              <div className="text-emerald-400 text-xs font-medium mb-2">Do</div>
+              {p.approach.map((a, i) => <div key={i} className="text-slate-300 text-xs mb-1">{a}</div>)}
+            </div>
+            <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-3">
+              <div className="text-rose-400 text-xs font-medium mb-2">Don't</div>
+              {p.avoid.map((a, i) => <div key={i} className="text-slate-300 text-xs mb-1">{a}</div>)}
+            </div>
+            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3">
+              <div className="text-cyan-400 text-xs font-medium mb-2">Pitch Template</div>
+              <div className="text-white text-xs font-medium">{p.pitch}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Relationship Map */}
+        <div>
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">{p.name.split(" ")[0]}'s Relationships (ranked by synergy)</div>
+          <div className="space-y-2">
+            {personPairs.map(({ other, pair }) => (
+              <div key={other.initials} className={`flex items-center gap-3 p-3 rounded-lg border ${scoreBorder(pair.score)} bg-slate-800/30`}>
+                <Avatar person={other} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm font-medium">{other.name}</span>
+                    <span className="text-slate-500 text-xs">— {pair.label}</span>
+                  </div>
+                  <div className="text-slate-400 text-xs truncate">{pair.dynamic}</div>
+                </div>
+                <div className={`px-2 py-0.5 rounded text-xs font-bold text-white ${scoreColor(pair.score)}`}>{pair.score}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== TAB: TEAM RISK DASHBOARD =====
+function RiskTab() {
+  const pipeline = getPipelineData();
+  const voices = getVoiceData();
+
+  const risks = [
+    {
+      severity: "critical",
+      title: "Enablement Vacuum",
+      metric: "0 geniuses, 2 competencies, 3 frustrations",
+      description: "Nobody on this team is naturally wired to support, assist, and help others succeed. In practice, this means people get stuck without help, onboarding is rough, and handoffs drop.",
+      impact: "Tasks stall between stages. New processes lack support structure. People burn out carrying their own load with no backup.",
+      mitigation: "Build enablement into process: assign explicit 'support' roles per project. Consider an E/T hire. In the interim, Caleb (E competency) and Eric (E competency) should consciously lean into this."
+    },
+    {
+      severity: "critical",
+      title: "Tenacity Bottleneck",
+      metric: "1 genius (Eric), 0 competencies, 4 frustrations",
+      description: "Eric is the ONLY person wired to push things to completion. Four of five assessed members actively frustrate on Tenacity. Ideas get started but not finished.",
+      impact: "Eric becomes the bottleneck for every initiative that needs to ship. If Eric is unavailable, nothing crosses the finish line. Burnout risk is high.",
+      mitigation: "Create finish-line rituals: weekly 'ship list' reviews, definition-of-done checklists, and external accountability. Don't assign T-heavy work to T-frustration people without pairing them with Eric or building in deadlines with teeth."
+    },
+    {
+      severity: "high",
+      title: "No Guardian Voice",
+      metric: "0 of 5 assessed members have Guardian as a voice",
+      description: "Guardians manage risk, protect process, and ask 'what could go wrong?' This team has zero. Everyone is biased toward action and possibility.",
+      impact: "Blind spots in risk assessment. Processes get built fast but break easily. Nobody naturally advocates for stability or standards.",
+      mitigation: "Assign a rotating 'devil's advocate' role in key decisions. Before launching anything, explicitly ask: 'What could go wrong? What are we not seeing?' Consider adding a Guardian-voiced advisor or board member."
+    },
+    {
+      severity: "high",
+      title: "Idea Overproduction",
+      metric: "3 Invention geniuses, 5 Pioneer/Creative voices",
+      description: "This team generates ideas at an extraordinary rate. With 3 Invention geniuses and nearly everyone carrying Pioneer or Creative voices, the bottleneck is never 'what should we do' — it's 'what should we STOP doing.'",
+      impact: "Priority whiplash. New ideas constantly compete with in-flight work. Team energy disperses across too many fronts.",
+      mitigation: "Implement a hard cap on active initiatives (e.g., 3 rocks per quarter). Use Josh and David's Discernment to ruthlessly filter ideas before they enter the pipeline. Create an 'idea parking lot' so ideas feel captured but don't consume bandwidth."
+    },
+    {
+      severity: "moderate",
+      title: "Speed vs. Depth Tension",
+      metric: "High E/ENTP/7w8 energy vs. INTJ/Discernment evaluators",
+      description: "Some team members (Eric, Owen) want to move fast and break things. Others (Josh, David) need time to evaluate and plan. This is a healthy tension IF managed — destructive if not.",
+      impact: "Frustration in meetings. Fast movers feel held back, deep thinkers feel steamrolled. Decisions get made twice — once quickly, once correctly.",
+      mitigation: "Create two modes: 'explore' meetings (fast, generative, no commitments) and 'decide' meetings (evaluative, commitment-ready). Label which mode you're in. Give Josh and David pre-read time before decision meetings."
+    },
+    {
+      severity: "moderate",
+      title: "All-Extrovert Amplification",
+      metric: "5 of 6 members are extraverted (Josh is the lone introvert-leaning)",
+      description: "Highly extraverted teams can mistake volume for consensus. The loudest idea wins, not the best one. Josh's quieter processing style may get drowned out.",
+      impact: "Josh's strategic insights may be undervalued. Group decisions may reflect the last person who spoke rather than the best analysis. Meetings can become performative rather than productive.",
+      mitigation: "Implement async input before group discussions (Slack thread, doc comments). Explicitly invite Josh's perspective before closing decisions. Use silent brainstorming techniques (write first, then discuss)."
+    }
+  ];
+
+  const severityColors = {
+    critical: { bg: "bg-rose-500/10", border: "border-rose-500/40", text: "text-rose-400", badge: "bg-rose-500/20 text-rose-300" },
+    high: { bg: "bg-amber-500/10", border: "border-amber-500/40", text: "text-amber-400", badge: "bg-amber-500/20 text-amber-300" },
+    moderate: { bg: "bg-sky-500/10", border: "border-sky-500/40", text: "text-sky-400", badge: "bg-sky-500/20 text-sky-300" }
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-slate-400 text-sm">Structural vulnerabilities identified from assessment data. These aren't flaws — they're patterns to be aware of and manage intentionally.</p>
+
+      {/* Severity Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-rose-400">{risks.filter(r => r.severity === "critical").length}</div>
+          <div className="text-rose-400 text-xs font-medium uppercase">Critical</div>
+        </div>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-amber-400">{risks.filter(r => r.severity === "high").length}</div>
+          <div className="text-amber-400 text-xs font-medium uppercase">High</div>
+        </div>
+        <div className="bg-sky-500/10 border border-sky-500/30 rounded-lg p-4 text-center">
+          <div className="text-3xl font-bold text-sky-400">{risks.filter(r => r.severity === "moderate").length}</div>
+          <div className="text-sky-400 text-xs font-medium uppercase">Moderate</div>
+        </div>
+      </div>
+
+      {/* Risk Cards */}
+      {risks.map((risk, i) => {
+        const c = severityColors[risk.severity];
+        return (
+          <div key={i} className={`${c.bg} border ${c.border} rounded-xl p-5`}>
+            <div className="flex items-center gap-3 mb-3">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${c.badge}`}>{risk.severity}</span>
+              <h3 className="text-white font-semibold">{risk.title}</h3>
+            </div>
+            <div className={`text-xs ${c.text} font-mono mb-3`}>{risk.metric}</div>
+            <div className="text-slate-300 text-sm mb-3">{risk.description}</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-slate-900/40 rounded-lg p-3">
+                <div className="text-rose-400 text-xs font-medium uppercase mb-1">Impact if Unmanaged</div>
+                <div className="text-slate-300 text-xs">{risk.impact}</div>
+              </div>
+              <div className="bg-slate-900/40 rounded-lg p-3">
+                <div className="text-emerald-400 text-xs font-medium uppercase mb-1">Recommended Action</div>
+                <div className="text-slate-300 text-xs">{risk.mitigation}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ===== TAB: MEETING OPTIMIZER =====
+const meetingTypes = [
+  {
+    name: "Strategy / Vision",
+    description: "Setting direction, exploring opportunities, long-range planning",
+    needed: ["W", "I", "D"],
+    voices: ["Pioneer", "Creative"],
+    recommended: ["JS", "AR", "CZ"],
+    optional: ["EB"],
+    why: "Josh (W/D) identifies the right problems, Alex (W/I) generates possibilities, Caleb (G/I) connects to purpose. Eric optional for commitment authority."
+  },
+  {
+    name: "Execution / Sprint Planning",
+    description: "Breaking work into tasks, assigning owners, setting deadlines",
+    needed: ["G", "D", "T"],
+    voices: [],
+    recommended: ["EB", "JS", "DZ"],
+    optional: ["CZ"],
+    why: "Eric (G/T) drives to deadlines, Josh (D) evaluates feasibility, David (D/I) architects the solution. Caleb optional for team alignment."
+  },
+  {
+    name: "Brainstorm / Ideation",
+    description: "Generating new ideas, exploring possibilities, creative problem-solving",
+    needed: ["W", "I"],
+    voices: ["Pioneer", "Creative"],
+    recommended: ["AR", "CZ", "JS", "OB"],
+    optional: ["DZ"],
+    why: "Alex + Caleb are the idea engine. Josh adds strategic Wonder. Owen's debate sharpens ideas. David can evaluate afterward."
+  },
+  {
+    name: "Client / Sales Strategy",
+    description: "Planning outreach, reviewing pipeline, refining messaging",
+    needed: ["G", "I", "D"],
+    voices: ["Connector"],
+    recommended: ["DZ", "OB", "CZ"],
+    optional: ["AR", "EB"],
+    why: "David and Owen are the BDRs — they own the pipeline. Caleb connects to customer experience. Alex optional for messaging, Eric for commitment."
+  },
+  {
+    name: "Problem Solving / IDS",
+    description: "Identifying, discussing, and solving specific issues",
+    needed: ["W", "D", "G"],
+    voices: [],
+    recommended: ["JS", "EB", "DZ"],
+    optional: ["CZ"],
+    why: "Josh (W/D) identifies root cause, David (I/D) invents solutions, Eric (G/T) drives to resolution. Caleb optional for alignment."
+  },
+  {
+    name: "Team Check-in / Retro",
+    description: "Culture, morale, team health, interpersonal dynamics",
+    needed: ["E", "G"],
+    voices: ["Connector", "Nurturer"],
+    recommended: ["CZ", "DZ"],
+    optional: ["EB", "AR"],
+    why: "Caleb (Nurturer/Connector) reads the room. David (Connector) builds trust. NOTE: This is the team's weakest meeting type — no E geniuses. Be extra intentional."
+  }
+];
+
+function MeetingTab() {
+  const [selected, setSelected] = useState(0);
+  const meeting = meetingTypes[selected];
+
+  return (
+    <div className="space-y-4">
+      <p className="text-slate-400 text-sm">Optimal team composition for different meeting types, based on Working Genius pipeline needs and voice requirements.</p>
+
+      {/* Meeting type selector */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {meetingTypes.map((mt, i) => (
+          <button key={i} onClick={() => setSelected(i)}
+            className={`text-left px-3 py-3 rounded-lg border transition-all ${selected === i ? "bg-slate-700 border-cyan-500/50 text-white" : "bg-slate-800/30 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600"}`}>
+            <div className="text-sm font-medium">{mt.name}</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">{mt.description}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Detail */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <h3 className="text-white text-lg font-semibold mb-1">{meeting.name}</h3>
+        <p className="text-slate-400 text-sm mb-5">{meeting.description}</p>
+
+        {/* WG needs */}
+        <div className="mb-5">
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Working Genius Needed</div>
+          <div className="flex gap-2">
+            {meeting.needed.map(code => {
+              const wg = wgTypes.find(w => w.code === code);
+              return (
+                <div key={code} className="bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-center">
+                  <div className="text-white font-bold">{code}</div>
+                  <div className="text-slate-400 text-[10px]">{wg?.name}</div>
+                </div>
+              );
+            })}
+            {meeting.voices.length > 0 && (
+              <>
+                <div className="flex items-center text-slate-600 px-1">+</div>
+                {meeting.voices.map(v => (
+                  <div key={v} className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 text-center">
+                    <div className="text-indigo-300 text-sm font-medium">{v}</div>
+                    <div className="text-slate-500 text-[10px]">voice</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Recommended attendees */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
+            <div className="text-emerald-400 text-xs font-medium uppercase tracking-wider mb-3">Recommended (Core)</div>
+            <div className="flex flex-wrap gap-2">
+              {meeting.recommended.map(initials => {
+                const person = team.find(p => p.initials === initials);
+                return person ? (
+                  <div key={initials} className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2">
+                    <Avatar person={person} size="sm" />
+                    <div>
+                      <div className="text-white text-sm font-medium">{person.name.split(" ")[0]}</div>
+                      <div className="text-slate-500 text-[10px]">
+                        {person.wg ? person.wg.genius.join("/") : "—"}
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          </div>
+          <div className="bg-slate-700/20 border border-slate-700 rounded-lg p-4">
+            <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-3">Optional (Add if available)</div>
+            <div className="flex flex-wrap gap-2">
+              {meeting.optional.map(initials => {
+                const person = team.find(p => p.initials === initials);
+                return person ? (
+                  <div key={initials} className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-2">
+                    <Avatar person={person} size="sm" />
+                    <div>
+                      <div className="text-slate-300 text-sm font-medium">{person.name.split(" ")[0]}</div>
+                      <div className="text-slate-500 text-[10px]">
+                        {person.wg ? person.wg.genius.join("/") : "—"}
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Rationale */}
+        <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-4 mb-5">
+          <div className="text-cyan-400 text-xs font-medium uppercase tracking-wider mb-1">Why This Composition</div>
+          <div className="text-slate-300 text-sm">{meeting.why}</div>
+        </div>
+
+        {/* Coverage Analysis */}
+        <div>
+          <div className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Pipeline Coverage for This Meeting</div>
+          <div className="flex gap-1">
+            {wgTypes.map(type => {
+              const attendees = meeting.recommended.map(i => team.find(p => p.initials === i)).filter(Boolean);
+              const hasGenius = attendees.some(p => p.wg?.genius.includes(type.code));
+              const hasComp = attendees.some(p => p.wg?.competency.includes(type.code));
+              const isNeeded = meeting.needed.includes(type.code);
+              return (
+                <div key={type.code} className={`flex-1 rounded-lg p-2 text-center border ${
+                  hasGenius ? "bg-emerald-500/20 border-emerald-500/40" :
+                  hasComp ? "bg-amber-500/10 border-amber-500/30" :
+                  isNeeded ? "bg-rose-500/10 border-rose-500/30" :
+                  "bg-slate-800/30 border-slate-700"
+                }`}>
+                  <div className={`font-bold text-sm ${hasGenius ? "text-emerald-400" : hasComp ? "text-amber-400" : isNeeded ? "text-rose-400" : "text-slate-600"}`}>{type.code}</div>
+                  <div className="text-[9px] text-slate-500">{type.name}</div>
+                  <div className={`text-[9px] mt-1 ${hasGenius ? "text-emerald-500" : hasComp ? "text-amber-500" : isNeeded ? "text-rose-500" : "text-slate-600"}`}>
+                    {hasGenius ? "GENIUS" : hasComp ? "COMP" : isNeeded ? "GAP" : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== TAB: RESOURCES =====
+const LLM_GUIDE_CONTENT = `# The Channel Companion — LLM Communication Guide
+
+Use this document as a system prompt or context block when asking an AI to help you draft messages, emails, Slack messages, or talking points for a specific teammate. Paste the relevant section (or the whole doc) into your AI tool of choice.
+
+---
+
+## How to Use This
+
+When drafting communication to a teammate, paste this prompt into your AI:
+
+> I'm writing a [message/email/Slack/talking points] to [NAME] about [TOPIC]. Using the communication profile below, help me draft this in a way that will land well with them. Here's their profile:
+
+Then paste the relevant person's section below.
+
+---
+
+## Eric Brooker — CEO
+
+**Working Genius:** Galvanizing + Tenacity (genius), Invention + Enablement (competency), Discernment + Wonder (frustration)
+
+**Communication Profile:**
+- Eric is wired for action and completion. He rallies people and pushes things across the finish line.
+- He processes quickly and has a high bias toward doing, not discussing.
+- He can get frustrated by open-ended exploration without a clear direction.
+
+**When writing to Eric:**
+- Lead with the action or decision needed — put the ask in the first sentence
+- Be concise: what's the situation, what do you recommend, what do you need from him
+- Show momentum — frame things in terms of progress and next steps
+- If sharing an idea, include at least a rough plan for execution
+- Avoid: long preambles, excessive options without a recommendation, or "just thinking out loud" framing
+
+**Example framing:**
+- Good: "I want to move forward on X. Here's the plan: [steps]. I need you to [specific ask]. Can we lock this in by Thursday?"
+- Avoid: "I've been thinking about a few different directions we could go and wanted to get your thoughts on the possibilities..."
+
+---
+
+## Alex Rollins — CMO
+
+**Working Genius:** Wonder + Invention (genius), Discernment + Galvanizing (competency), Enablement + Tenacity (frustration)
+**Five Voices:** Pioneer, Creative | **MBTI:** ENFP | **Enneagram:** 3w4
+
+**Communication Profile:**
+- Alex is wired to see what's possible and create original solutions. She thrives in open exploration.
+- She processes by talking through possibilities and building on ideas collaboratively.
+- She values originality and can lose energy when things feel routine or overly constrained.
+
+**When writing to Alex:**
+- Start with the big picture — what's the vision or opportunity?
+- Use "what if" language to spark her thinking
+- Give room for her to riff — don't over-specify the solution
+- Appreciate the creativity in her ideas before pivoting to logistics
+- If you need something concrete, frame it as: "Here's the canvas — what would you create?"
+- Avoid: jumping straight to execution details, shutting down ideas before they're explored, or framing things as purely procedural
+
+**Example framing:**
+- Good: "I see an opportunity with X. I have a few instincts but I'd love your creative take — what if we approached it from [angle]?"
+- Avoid: "We need to execute on X. Here are the exact steps I need you to follow."
+
+---
+
+## Caleb Zimmermann — Chief Experience Officer
+
+**Working Genius:** Galvanizing + Invention (genius), Discernment + Enablement (competency), Wonder + Tenacity (frustration)
+**Five Voices:** Creative, Connector, Nurturer | **MBTI:** ENFP | **Enneagram:** 3w2
+**StrengthsFinder:** Competition, Connectedness, Individualization, Adaptability, Belief
+
+**Communication Profile:**
+- Caleb connects ideas to people and purpose. He invents solutions and rallies alignment around them.
+- He values understanding the "why" and the human impact of decisions.
+- He processes collaboratively — thinking out loud is how he lands on ideas.
+- He's competitive and driven but also deeply relational.
+
+**When writing to Caleb:**
+- Connect the idea to people and purpose — who does this help and why does it matter?
+- Collaborate openly — frame things as "let's figure this out together" rather than presenting fait accompli
+- Build on his ideas before redirecting them
+- If you disagree, lead with what you appreciate before the redirect
+- If asking for a decision, frame it in terms of team impact and values alignment
+- Avoid: skipping the "why," pushing to action without buy-in, or being dismissive of relational concerns
+
+**Example framing:**
+- Good: "I think this could really help [person/team/customer] because [reason]. Here's what I'm thinking — what would you add or change?"
+- Avoid: "We need to do X. Here's the timeline. Let me know if you have questions."
+
+---
+
+## David Zimmermann — Business Development Representative
+
+**Working Genius:** Invention + Discernment (genius), Galvanizing + Wonder (competency), Enablement + Tenacity (frustration)
+**Five Voices:** Connector, Creative
+**MCODE Motivations:** Excel, Realize The Vision, Maximize, Architect, Finish
+
+**Communication Profile:**
+- David creates and evaluates. He invents practical solutions and has strong instincts for what will actually work.
+- He needs time to process — his best thinking comes after reflection, not in the moment.
+- He's motivated by excellence, vision realization, and building things that last.
+- He brings significant experience and depth to his evaluations.
+
+**When writing to David:**
+- Present the concept clearly, then give him space to process and respond
+- Ask for his honest assessment — "what do you think, will this actually work?"
+- Respect his experience by asking for input, not just assigning tasks
+- If you need a quick response, flag that upfront so he can prioritize
+- Frame challenges in terms of building something excellent — that's what motivates him
+- Avoid: rushing decisions, dismissing his concerns, or expecting him to just "go with the flow" on important calls
+
+**Example framing:**
+- Good: "Here's what I'm considering for [X]. I'd value your take — does this hold up? What am I missing? No rush, but if you could get back to me by [time] that would help."
+- Avoid: "We're doing X starting tomorrow. Just wanted to loop you in."
+
+---
+
+## Owen Brooker — Business Development Representative
+
+**Five Voices:** Pioneer, Connector | **MBTI:** ENTP | **Enneagram:** 7w8
+**Big Five:** Extraversion 98th, Openness 95th, Agreeableness 0th, Conscientiousness 1st, Neuroticism 5th
+
+**Communication Profile:**
+- Owen is wired for exploration and debate. He moves fast, challenges everything, and thinks by arguing.
+- He is extremely extraverted and open to new experiences, with very low agreeableness — he will push back naturally.
+- He thrives with autonomy and wilts under micromanagement.
+- His pushback is how he processes — it's intellectual sparring, not personal opposition.
+
+**When writing to Owen:**
+- Lead with the challenge or problem — frame it as something to crack
+- Give him autonomy over approach — tell him what needs to happen, not how
+- Be direct — he respects candor and won't be offended by bluntness
+- If you want buy-in, engage his competitive/debate instincts rather than asking for compliance
+- Keep communications short and high-energy — he'll lose interest in long, detailed instructions
+- Avoid: detailed step-by-step procedures, emotional framing without substance, or asking him to "just trust the process"
+
+**Example framing:**
+- Good: "Nobody's figured out how to crack [X] yet. I bet you could. Here's what I know — run with it and tell me what you find."
+- Avoid: "Please follow this 10-step process for [X]. Let me know when each step is complete."
+
+---
+
+## Josh Schmidt — CTO
+
+**Working Genius:** Wonder + Discernment (genius), Invention + Galvanizing (competency), Enablement + Tenacity (frustration)
+**Five Voices:** Pioneer, Creative | **MBTI:** INTJ
+**StrengthsFinder:** Strategic, Ideation, Command, Learner, Activator
+**MCODE:** Gain Ownership, Serve, Establish | **PI:** Maverick
+
+**Communication Profile:**
+- Josh sees problems others miss and evaluates solutions with strategic precision.
+- He thinks before he speaks — give him processing time and don't mistake quiet for disengagement.
+- He values logic, evidence, and well-reasoned arguments over enthusiasm alone.
+- He's motivated by ownership, building something that lasts, and strategic impact.
+- Despite being more introverted, he's decisive and commands when he's ready.
+
+**When writing to Josh:**
+- Lead with the strategic rationale — "here's the problem, here's the data, here's what I think"
+- Present your reasoning, then ask "what am I missing?" — he'll respect the intellectual openness
+- Give context for changes — don't just announce new direction without explaining why
+- If you need to move fast, acknowledge the trade-off: "I know we're moving faster than ideal — here's why"
+- Frame ownership opportunities — he's motivated by building and owning outcomes
+- Avoid: leading with pure emotion, changing direction without explanation, or rushing past the planning phase
+
+**Example framing:**
+- Good: "Strategically, I think we should [X] because [evidence/reasoning]. I see two risks: [A] and [B]. What's your read — am I thinking about this right?"
+- Avoid: "I have a great feeling about X! Let's just go for it and figure it out as we go."
+
+---
+
+## Quick Reference Matrix
+
+| Writing to... | Lead with... | Avoid... |
+|---|---|---|
+| **Eric** | The action plan and timeline | Open-ended exploration without direction |
+| **Alex** | The vision and "what if" | Jumping to execution details too fast |
+| **Caleb** | People impact and purpose | Skipping the "why" |
+| **David** | The concept + space to evaluate | Rushing his assessment |
+| **Owen** | The challenge to crack | Detailed step-by-step instructions |
+| **Josh** | Strategic rationale + data | Leading with pure emotion |
+`;
+
+function ResourcesTab() {
+  const [copied, setCopied] = useState(null);
+
+  function downloadFile(content, filename) {
+    const blob = new Blob([content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function copyToClipboard(content, label) {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-slate-400 text-sm">Downloadable resources for the team. Use the LLM guide with ChatGPT, Claude, or any AI tool to tailor communications to each teammate.</p>
+
+      {/* LLM Communication Guide */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-white font-semibold text-lg">LLM Communication Guide</h3>
+            <p className="text-slate-400 text-sm">Paste into any AI tool to get communication tailored to each teammate's personality</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => copyToClipboard(LLM_GUIDE_CONTENT, "llm")}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${copied === "llm" ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600"}`}>
+              {copied === "llm" ? "Copied!" : "Copy All"}
+            </button>
+            <button onClick={() => downloadFile(LLM_GUIDE_CONTENT, "channel-companion-llm-guide.md")}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition-all">
+              Download .md
+            </button>
+          </div>
+        </div>
+
+        {/* Per-person quick copy */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {team.map(person => {
+            // Extract person-specific section from the guide
+            const nameHeader = `## ${person.name}`;
+            const startIdx = LLM_GUIDE_CONTENT.indexOf(nameHeader);
+            const nextHeader = LLM_GUIDE_CONTENT.indexOf("\n---\n", startIdx + 1);
+            const section = startIdx >= 0 ? LLM_GUIDE_CONTENT.slice(startIdx, nextHeader > startIdx ? nextHeader : undefined) : "";
+            return (
+              <button key={person.initials} onClick={() => copyToClipboard(section, person.initials)}
+                className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${copied === person.initials ? "bg-emerald-500/10 border-emerald-500/40" : "bg-slate-800/30 border-slate-700 hover:border-slate-600"}`}>
+                <Avatar person={person} size="sm" />
+                <div className="text-left flex-1">
+                  <div className="text-white text-sm font-medium">{person.name.split(" ")[0]}'s Profile</div>
+                  <div className="text-slate-500 text-[10px]">{copied === person.initials ? "Copied!" : "Click to copy"}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Usage Instructions */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-3">How to Use the LLM Guide</h3>
+        <div className="space-y-3 text-slate-300 text-sm">
+          <div className="pl-3 border-l-2 border-cyan-500/40">
+            <span className="text-cyan-300 font-medium">Step 1:</span> Copy the full guide or a specific person's profile using the buttons above
+          </div>
+          <div className="pl-3 border-l-2 border-cyan-500/40">
+            <span className="text-cyan-300 font-medium">Step 2:</span> Open your AI tool (ChatGPT, Claude, etc.) and paste the profile
+          </div>
+          <div className="pl-3 border-l-2 border-cyan-500/40">
+            <span className="text-cyan-300 font-medium">Step 3:</span> Tell the AI what you want to write: "I'm writing a Slack message to [Name] about [topic]. Using the profile above, help me draft this."
+          </div>
+          <div className="pl-3 border-l-2 border-cyan-500/40">
+            <span className="text-cyan-300 font-medium">Step 4:</span> The AI will tailor the tone, structure, and framing to match what lands best with that person
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== MAIN APP =====
 const tabs = [
   { id: "overview", label: "Team Overview" },
   { id: "pipeline", label: "Genius Pipeline" },
   { id: "dynamics", label: "Pair Dynamics" },
+  { id: "deepdive", label: "Deep Dive" },
+  { id: "risk", label: "Team Risk" },
+  { id: "meeting", label: "Meeting Optimizer" },
   { id: "comm", label: "Communication" },
+  { id: "resources", label: "Resources" },
   { id: "exercise", label: "Team Exercise" }
 ];
 
@@ -702,7 +1441,11 @@ export default function ChannelCompanionTeamMap() {
         {activeTab === "overview" && <OverviewTab />}
         {activeTab === "pipeline" && <PipelineTab />}
         {activeTab === "dynamics" && <DynamicsTab />}
+        {activeTab === "deepdive" && <DeepDiveTab />}
+        {activeTab === "risk" && <RiskTab />}
+        {activeTab === "meeting" && <MeetingTab />}
         {activeTab === "comm" && <CommTab />}
+        {activeTab === "resources" && <ResourcesTab />}
         {activeTab === "exercise" && <ExerciseTab />}
       </div>
 
